@@ -3,6 +3,7 @@ import sqlite3
 from flask_session.__init__ import Session
 from tempfile import mkdtemp
 from datetime import datetime
+from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
 
@@ -12,13 +13,9 @@ Session(app)
 
 
 def apology(message, code=400):
-    """Render message as an apology to user."""
+    
     def escape(s):
-        """
-        Escape special characters.
-
-        https://github.com/jacebrowning/memegen#special-characters
-        """
+        
         for old, new in [("-", "--"), (" ", "-"), ("_", "__"), ("?", "~q"),
                          ("%", "~p"), ("#", "~h"), ("/", "~s"), ("\"", "''")]:
             s = s.replace(old, new)
@@ -80,7 +77,7 @@ def register():
             if row[1] == request.form.get("username"):
                 conn.close()
                 return apology("username taken")
-    cursor.execute("INSERT INTO users (username, firstname, surname, password) VALUES (?, ?, ?, ?)", (request.form.get("username"), request.form.get("firstname"), request.form.get("surname"), request.form.get("password")))
+    cursor.execute("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", (request.form.get("username"), request.form.get("email"),  generate_password_hash(request.form.get("password"))))
     conn.commit()
     cursor.execute("SELECT id, username FROM users ORDER BY id DESC LIMIT 1")
     user_id = cursor.fetchone()
@@ -101,10 +98,10 @@ def login():
     else:
         conn = sqlite3.connect('players.db')
         cursor = conn.cursor()
-        data = cursor.execute("SELECT id, username, password FROM users")
+        data = cursor.execute("SELECT id, username, password, email FROM users")
         
         for row in data:
-            if request.form.get("username")==row[1] and request.form.get("password")==row[2]:
+            if request.form.get("email")==row[3] and check_password_hash(row[2],request.form.get("password")):
                 session["user_id"] = row[0]
                 session["username"] = row[1]
                 session['logged_in'] = True
